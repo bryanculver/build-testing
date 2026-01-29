@@ -63,7 +63,7 @@ jobs:
       - name: "Build and Push (dev)"
         uses: "./.github/actions/build-push-container"
         with:
-          images: "ghcr.io/${{ github.repository }}"
+          images: "ghcr.io/${{ github.repository }}-dev"
           python-version: "${{ matrix.python-version }}"
           nautobot-version: "${{ steps.versionname.outputs.nautobot-version }}"
           push: true
