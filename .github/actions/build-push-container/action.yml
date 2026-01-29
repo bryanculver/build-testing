@@ -70,7 +70,7 @@ runs:
       id: "dockermeta"
       uses: "docker/metadata-action@v5"
       with:
-        images: "${{ inputs.image }}"
+        images: "${{ inputs.images }}"
         flavor: |
           latest=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
         tags: |
