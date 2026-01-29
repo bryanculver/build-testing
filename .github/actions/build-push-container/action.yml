@@ -76,8 +76,8 @@ runs:
         tags: |
           type=raw,value=${{ inputs.nautobot-version }}-py${{ inputs.python-version }}
           type=raw,value=${{ inputs.nautobot-version }},enable=${{ inputs.python-version == inputs.default-python-version }}
-          type=pep440,pattern={{major}}.{{minor}}-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' }}
-          type=pep440,pattern={{major}}.{{minor}},enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
+          type=pep440,pattern={{major}}.{{minor}}-py${{ inputs.python-version }},value=${{ inputs.nautobot-version }},match=v(\d.\d.\d),enable=${{ inputs.is-prerelease == 'false' }}
+          type=pep440,pattern={{major}}.{{minor}},value=${{ inputs.nautobot-version }},match=v(\d.\d.\d),enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
           type=raw,value=latest,enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
           type=raw,value=latest-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' }}
           type=raw,value=stable,enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
