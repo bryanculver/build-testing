@@ -56,8 +56,8 @@ jobs:
           nautobot-version: "${{ steps.versionname.outputs.nautobot-version }}"
           push: true
           target: "final"
-          default-python-version: "{{ env.BUILD_PUSH_CONTAINER_ACTION_DEFAULT_PYTHON_VERSION }}"
-          set-latest: "{{ env.BUILD_PUSH_CONTAINER_ACTION_SET_LATEST }}"
+          default-python-version: "${{ env.BUILD_PUSH_CONTAINER_ACTION_DEFAULT_PYTHON_VERSION }}"
+          set-latest: "${{ env.BUILD_PUSH_CONTAINER_ACTION_SET_LATEST }}"
           cache-scope: "nautobot-${{ steps.gitbranch.outputs.branch }}-${{ matrix.python-version }}"
 
       - name: "Build and Push (dev)"

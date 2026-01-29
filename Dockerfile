@@ -1,6 +1,6 @@
 ARG PYTHON_VER=3.11
 
-FROM python:${PYTHON_VER}-slim
+FROM python:${PYTHON_VER}-slim as build
 
 ARG NAUTOBOT_VERSION=3.0.0
 
@@ -8,3 +8,9 @@ ARG NAUTOBOT_VERSION=3.0.0
 RUN echo "nautobot==${NAUTOBOT_VERSION}" >> version.txt
 
 CMD ["echo", "Nautobot version: $(cat version.txt)"]
+
+FROM build as final
+CMD ["echo", "Final Nautobot version: $(cat version.txt)"]
+
+FROM build as final-dev
+CMD ["echo", "Final Dev Nautobot version: $(cat version.txt)"]
