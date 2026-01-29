@@ -5,6 +5,9 @@ on:
   release:
     types:
       - "published"
+  push:
+    branches:
+      - "main"
 
 jobs:
   push:
@@ -36,15 +39,25 @@ jobs:
           username: "${{ github.actor }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
 
+      - name: "Determine if nautobot-version is branch name or from tag name"
+        id: "versionname"
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "nautobot-version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "nautobot-version=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+          fi
+
       - name: "Build and Push (prod)"
         uses: "./.github/actions/build-push-container"
         with:
           images: "ghcr.io/${{ github.repository }}"
           python-version: "${{ matrix.python-version }}"
-          nautobot-version: "${{ github.event.release.tag_name }}"
+          nautobot-version: "${{ steps.versionname.outputs.nautobot-version }}"
           push: true
           target: "final"
-          latest:
+          default-python-version: "{{ env.BUILD_PUSH_CONTAINER_ACTION_DEFAULT_PYTHON_VERSION }}"
+          set-latest: "{{ env.BUILD_PUSH_CONTAINER_ACTION_SET_LATEST }}"
           cache-scope: "nautobot-${{ steps.gitbranch.outputs.branch }}-${{ matrix.python-version }}"
 
       - name: "Build and Push (dev)"
@@ -52,7 +65,9 @@ jobs:
         with:
           images: "ghcr.io/${{ github.repository }}"
           python-version: "${{ matrix.python-version }}"
-          nautobot-version: "${{ github.event.release.tag_name }}"
+          nautobot-version: "${{ steps.versionname.outputs.nautobot-version }}"
           push: true
           target: "final-dev"
+          default-python-version: "{{ env.BUILD_PUSH_CONTAINER_ACTION_DEFAULT_PYTHON_VERSION }}"
+          set-latest: "{{ env.BUILD_PUSH_CONTAINER_ACTION_SET_LATEST }}"
           cache-scope: "nautobot-dev-${{ steps.gitbranch.outputs.branch }}-${{ matrix.python-version }}"

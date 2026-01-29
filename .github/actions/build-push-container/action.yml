@@ -28,12 +28,13 @@ inputs:
     description: "GHA cache scope prefix"
     required: false
     default: ""
-  is-prerelease:
-    description: "Whether this is a pre-release (true/false)" # get this from nautobot-version, if valid PEP440 prerelease then true
-    required: false
   default-python-version:
-    description: "Python version that gets unadorned tags" # fetch this from env var in workflow BUILD_PUSH_CONTAINER_ACTION_DEFAULT_PYTHON_VERSION
+    description: "Default Python version to use for 'latest' tag"
+    required: true
+  set-latest:
+    description: "Whether to set the 'latest' and stable tag for releases"
     required: false
+    default: "false"
 
 outputs:
   tags:
@@ -64,7 +65,7 @@ runs:
         except InvalidVersion:
             is_prerelease = True  # assume branch names are not stable releases
 
-        print(f"::set-output name=is-prerelease::{str(is_prerelease).lower()}")
+        print(f"::set-output name=is-prerelease::{str(is_prerelease).lower()}")  
     - name: "Docker Metadata"
       id: "dockermeta"
       uses: "docker/metadata-action@v5"
@@ -73,13 +74,14 @@ runs:
         flavor: |
           latest=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
         tags: |
-          type=semver,pattern={{version}}-py${{ inputs.python-version }}
-          type=semver,pattern={{version}},enable=${{ inputs.python-version == inputs.default-python-version }}
-          type=semver,pattern={{major}}.{{minor}}-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' }}
-          type=semver,pattern={{major}}.{{minor}},enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
-          type=raw,value=latest-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' }}
-          type=raw,value=stable,enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
-          type=raw,value=stable-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' }}
+          type=raw,pattern=${{ inputs.nautobot-version }}-py${{ inputs.python-version }}
+          type=raw,pattern=${{ inputs.nautobot-version }},enable=${{ inputs.python-version == inputs.default-python-version }}
+          type=pep440,pattern={{major}}.{{minor}}-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' }}
+          type=pep440,pattern={{major}}.{{minor}},enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
+          type=raw,value=latest,enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
+          type=raw,value=latest-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' }}
+          type=raw,value=stable,enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
+          type=raw,value=stable-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' }}
         labels: |
           org.opencontainers.image.title=Nautobot
 
@@ -102,6 +104,5 @@ runs:
         cache-to: "type=gha,mode=max,scope=${{ inputs.cache-scope }}-${{ inputs.python-version }}"
         context: "."
         build-args: |
-          PYTHON_VER=${{ inputs.python-version }}
-          NAUTOBOT_VERSION=${{ inputs.nautobot-version }}
-          ${{ inputs.build-args }}
+          PYTHON_VER=${{ matrix.python-version }}
+          POETRY_INSTALLER_PARALLEL=false
