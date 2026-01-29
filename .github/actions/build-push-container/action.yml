@@ -1,0 +1,107 @@
+---
+name: "Build and Push Container"
+description: "Build and push a Docker image with Nautobot-style semver tagging"
+
+inputs:
+  images:
+    description: "Full image name(s) (e.g. ghcr.io/org/repo)"
+    required: true
+  python-version:
+    description: "Python version for the build matrix"
+    required: true
+  nautobot-version:
+    description: "Nautobot version to install (either PEP440 or branch name)"
+    required: true
+  target:
+    description: "Dockerfile target stage"
+    required: true
+    default: "final"
+  push:
+    description: "Whether to push the image"
+    required: false
+    default: "false"
+  platforms:
+    description: "Target platforms"
+    required: false
+    default: "linux/amd64,linux/arm64"
+  cache-scope:
+    description: "GHA cache scope prefix"
+    required: false
+    default: ""
+  is-prerelease:
+    description: "Whether this is a pre-release (true/false)" # get this from nautobot-version, if valid PEP440 prerelease then true
+    required: false
+  default-python-version:
+    description: "Python version that gets unadorned tags" # fetch this from env var in workflow BUILD_PUSH_CONTAINER_ACTION_DEFAULT_PYTHON_VERSION
+    required: false
+
+outputs:
+  tags:
+    description: "Generated Docker tags"
+    value: "${{ steps.dockermeta.outputs.tags }}"
+  labels:
+    description: "Generated Docker labels"
+    value: "${{ steps.dockermeta.outputs.labels }}"
+  digest:
+    description: "Image digest"
+    value: "${{ steps.build.outputs.digest }}"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Determine if Nautobot Version is Pre-release"
+      id: "prereleasecheck"
+      shell: "python"
+      run: |
+        import sys
+        from packaging.version import Version, InvalidVersion
+
+        nautobot_version = "${{ inputs.nautobot-version }}"
+
+        try:
+            v = Version(nautobot_version)
+            is_prerelease = v.is_prerelease
+        except InvalidVersion:
+            is_prerelease = True  # assume branch names are not stable releases
+
+        print(f"::set-output name=is-prerelease::{str(is_prerelease).lower()}")
+    - name: "Docker Metadata"
+      id: "dockermeta"
+      uses: "docker/metadata-action@v5"
+      with:
+        images: "${{ inputs.image }}"
+        flavor: |
+          latest=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
+        tags: |
+          type=semver,pattern={{version}}-py${{ inputs.python-version }}
+          type=semver,pattern={{version}},enable=${{ inputs.python-version == inputs.default-python-version }}
+          type=semver,pattern={{major}}.{{minor}}-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' }}
+          type=semver,pattern={{major}}.{{minor}},enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
+          type=raw,value=latest-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' }}
+          type=raw,value=stable,enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
+          type=raw,value=stable-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' }}
+        labels: |
+          org.opencontainers.image.title=Nautobot
+
+    - name: "Log tags"
+      shell: "bash"
+      run: |
+        echo "=== Tags for ${{ inputs.image }} (py${{ inputs.python-version }}) ==="
+        echo "${{ steps.dockermeta.outputs.tags }}"
+
+    - name: "Build and Push"
+      id: "build"
+      uses: "docker/build-push-action@v6"
+      with:
+        push: "${{ inputs.push }}"
+        target: "${{ inputs.target }}"
+        platforms: "${{ inputs.platforms }}"
+        tags: "${{ steps.dockermeta.outputs.tags }}"
+        labels: "${{ steps.dockermeta.outputs.labels }}"
+        cache-from: "type=gha,scope=${{ inputs.cache-scope }}-${{ inputs.python-version }}"
+        cache-to: "type=gha,mode=max,scope=${{ inputs.cache-scope }}-${{ inputs.python-version }}"
+        context: "."
+        build-args: |
+          PYTHON_VER=${{ inputs.python-version }}
+          NAUTOBOT_VERSION=${{ inputs.nautobot-version }}
+          ${{ inputs.build-args }}

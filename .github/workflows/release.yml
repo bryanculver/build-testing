@@ -13,93 +13,46 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version:
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
-    env:
-      GHCR_IMAGE: "ghcr.io/${{ github.repository }}"
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
     permissions:
       contents: "read"
       packages: "write"
+    env:
+      BUILD_PUSH_CONTAINER_ACTION_DEFAULT_PYTHON_VERSION: "3.13"
+      BUILD_PUSH_CONTAINER_ACTION_SET_LATEST: "true" # this will be ignored for pre-releases
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
-
+      - run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+        id: "gitbranch"
       - name: "Set up QEMU"
-        uses: "docker/setup-qemu-action@v3"
-
+        uses: "docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7" # v2
       - name: "Set up Docker Buildx"
-        uses: "docker/setup-buildx-action@v3"
-
-      - name: "Login to GHCR"
-        uses: "docker/login-action@v3"
+        uses: "docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55" # v2
+      - name: "Login to GitHub Container Registry"
+        uses: "docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc" # v2
         with:
           registry: "ghcr.io"
           username: "${{ github.actor }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: "Docker Metadata"
-        id: "dockermeta"
-        uses: "docker/metadata-action@v5"
+      - name: "Build and Push (prod)"
+        uses: "./.github/actions/build-push-container"
         with:
-          images: "${{ env.GHCR_IMAGE }}"
-          flavor: |
-            latest=${{ ! github.event.release.prerelease && matrix.python-version == 3.13 }}
-          tags: |
-            type=semver,pattern={{version}}-py${{ matrix.python-version }}
-            type=semver,pattern={{version}},enable=${{ matrix.python-version == 3.13 }}
-            type=semver,pattern={{major}}.{{minor}}-py${{ matrix.python-version }},enable=${{ ! github.event.release.prerelease }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ ! github.event.release.prerelease && matrix.python-version == 3.13 }}
-            type=raw,value=latest-py${{ matrix.python-version }},enable=${{ ! github.event.release.prerelease }}
-            type=raw,value=stable,enable=${{ ! github.event.release.prerelease && matrix.python-version == 3.13 }}
-            type=raw,value=stable-py${{ matrix.python-version }},enable=${{ ! github.event.release.prerelease }}
-          labels: |
-            org.opencontainers.image.title=Nautobot
-
-      - name: "Build and Push"
-        uses: "docker/build-push-action@v6"
-        with:
+          images: "ghcr.io/${{ github.repository }}"
+          python-version: "${{ matrix.python-version }}"
+          nautobot-version: "${{ github.event.release.tag_name }}"
           push: true
-          platforms: "linux/amd64,linux/arm64"
-          tags: "${{ steps.dockermeta.outputs.tags }}"
-          labels: "${{ steps.dockermeta.outputs.labels }}"
-          cache-from: "type=gha,scope=nautobot-${{ matrix.python-version }}"
-          cache-to: "type=gha,mode=max,scope=nautobot-${{ matrix.python-version }}"
-          context: "."
-          build-args: |
-            PYTHON_VER=${{ matrix.python-version }}
-            NAUTOBOT_VERSION=${{ github.event.release.tag_name }}
+          target: "final"
+          latest:
+          cache-scope: "nautobot-${{ steps.gitbranch.outputs.branch }}-${{ matrix.python-version }}"
 
-      - name: "Docker Dev Metadata"
-        id: "dockerdevmeta"
-        uses: "docker/metadata-action@v5"
+      - name: "Build and Push (dev)"
+        uses: "./.github/actions/build-push-container"
         with:
-          images: "${{ env.GHCR_IMAGE }}-dev"
-          flavor: |
-            latest=${{ ! github.event.release.prerelease && matrix.python-version == 3.13 }}
-          tags: |
-            type=semver,pattern={{version}}-py${{ matrix.python-version }}
-            type=semver,pattern={{version}},enable=${{ matrix.python-version == 3.13 }}
-            type=semver,pattern={{major}}.{{minor}}-py${{ matrix.python-version }},enable=${{ ! github.event.release.prerelease }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ ! github.event.release.prerelease && matrix.python-version == 3.13 }}
-            type=raw,value=latest-py${{ matrix.python-version }},enable=${{ ! github.event.release.prerelease }}
-            type=raw,value=stable,enable=${{ ! github.event.release.prerelease && matrix.python-version == 3.13 }}
-            type=raw,value=stable-py${{ matrix.python-version }},enable=${{ ! github.event.release.prerelease }}
-          labels: |
-            org.opencontainers.image.title=Nautobot
-
-      - name: "Build and Push Dev"
-        uses: "docker/build-push-action@v6"
-        with:
+          images: "ghcr.io/${{ github.repository }}"
+          python-version: "${{ matrix.python-version }}"
+          nautobot-version: "${{ github.event.release.tag_name }}"
           push: true
-          platforms: "linux/amd64,linux/arm64"
-          tags: "${{ steps.dockerdevmeta.outputs.tags }}"
-          labels: "${{ steps.dockerdevmeta.outputs.labels }}"
-          cache-from: "type=gha,scope=nautobot-dev-${{ matrix.python-version }}"
-          cache-to: "type=gha,mode=max,scope=nautobot-dev-${{ matrix.python-version }}"
-          context: "."
-          build-args: |
-            PYTHON_VER=${{ matrix.python-version }}
-            NAUTOBOT_VERSION=${{ github.event.release.tag_name }}
+          target: "final-dev"
+          cache-scope: "nautobot-dev-${{ steps.gitbranch.outputs.branch }}-${{ matrix.python-version }}"
