@@ -66,7 +66,7 @@ runs:
             clean_version = candidate_version
         except InvalidVersion:
             clean_version = nautobot_version  # keep original if not valid version
-        print(f"echo "clean-version={clean_version}" >> $GITHUB_OUTPUT")
+        print(f"echo \"clean-version={clean_version}\" >> $GITHUB_OUTPUT")
     - name: "Determine if Nautobot Version is Pre-release"
       id: "prereleasecheck"
       shell: "python"
@@ -82,7 +82,7 @@ runs:
         except InvalidVersion:
             is_prerelease = True  # assume branch names are not stable releases
 
-        print(f"echo "is-prerelease={str(is_prerelease).lower()}" >> $GITHUB_STATE")
+        print(f"echo \"is-prerelease={str(is_prerelease).lower()}\" >> $GITHUB_STATE")
     - name: "Docker Metadata"
       id: "dockermeta"
       uses: "docker/metadata-action@v5"
