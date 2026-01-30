@@ -54,6 +54,7 @@ runs:
       id: "cleannautobotversion"
       shell: "python"
       run: |
+        import os
         import sys
         from packaging.version import Version, InvalidVersion
         nautobot_version = "${{ inputs.nautobot-version }}"
@@ -72,6 +73,7 @@ runs:
       id: "prereleasecheck"
       shell: "python"
       run: |
+        import os
         import sys
         from packaging.version import Version, InvalidVersion
 
