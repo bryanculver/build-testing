@@ -50,6 +50,23 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: "Clean nautobot-version Input in Case of Leading 'v' and Valid Version Check"
+      id: "cleannautobotversion"
+      shell: "python"
+      run: |
+        import sys
+        from packaging.version import Version, InvalidVersion
+        nautobot_version = "${{ inputs.nautobot-version }}"
+        if nautobot_version.startswith("v"):
+            candidate_version = nautobot_version[1:]
+        else:
+            candidate_version = nautobot_version
+        try:
+            v = Version(candidate_version)
+            clean_version = candidate_version
+        except InvalidVersion:
+            clean_version = nautobot_version  # keep original if not valid version
+        print(f"::set-output name=clean-version::{clean_version}")
     - name: "Determine if Nautobot Version is Pre-release"
       id: "prereleasecheck"
       shell: "python"
@@ -57,7 +74,7 @@ runs:
         import sys
         from packaging.version import Version, InvalidVersion
 
-        nautobot_version = "${{ inputs.nautobot-version }}"
+        nautobot_version = "${{ steps.cleannautobotversion.outputs.clean-version }}"
 
         try:
             v = Version(nautobot_version)
@@ -74,10 +91,10 @@ runs:
         flavor: |
           latest=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
         tags: |
-          type=raw,value=${{ inputs.nautobot-version }}-py${{ inputs.python-version }}
-          type=raw,value=${{ inputs.nautobot-version }},enable=${{ inputs.python-version == inputs.default-python-version }}
-          type=pep440,pattern={{major}}.{{minor}}-py${{ inputs.python-version }},value=${{ inputs.nautobot-version }},match=v(\d.\d.\d),enable=${{ inputs.is-prerelease == 'false' }}
-          type=pep440,pattern={{major}}.{{minor}},value=${{ inputs.nautobot-version }},match=v(\d.\d.\d),enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
+          type=raw,value=${{ steps.cleannautobotversion.outputs.clean-version }}-py${{ inputs.python-version }}
+          type=raw,value=${{ steps.cleannautobotversion.outputs.clean-version }},enable=${{ inputs.python-version == inputs.default-python-version }}
+          type=pep440,pattern={{major}}.{{minor}}-py${{ inputs.python-version }},value=${{ steps.cleannautobotversion.outputs.clean-version }},match=v(\d.\d.\d),enable=${{ inputs.is-prerelease == 'false' }}
+          type=pep440,pattern={{major}}.{{minor}},value=${{ steps.cleannautobotversion.outputs.clean-version }},match=v(\d.\d.\d),enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
           type=raw,value=latest,enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
           type=raw,value=latest-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' }}
           type=raw,value=stable,enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
