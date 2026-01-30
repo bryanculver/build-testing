@@ -89,16 +89,16 @@ runs:
       with:
         images: "${{ inputs.images }}"
         flavor: |
-          latest=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
+          latest=${{ steps.prereleasecheck.outputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
         tags: |
           type=raw,value=${{ steps.cleannautobotversion.outputs.clean-version }}-py${{ inputs.python-version }}
           type=raw,value=${{ steps.cleannautobotversion.outputs.clean-version }},enable=${{ inputs.python-version == inputs.default-python-version }}
-          type=pep440,pattern={{major}}.{{minor}}-py${{ inputs.python-version }},value=${{ steps.cleannautobotversion.outputs.clean-version }},match=v(\d.\d.\d),enable=${{ inputs.is-prerelease == 'false' }}
-          type=pep440,pattern={{major}}.{{minor}},value=${{ steps.cleannautobotversion.outputs.clean-version }},match=v(\d.\d.\d),enable=${{ inputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
-          type=raw,value=latest,enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
-          type=raw,value=latest-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' }}
-          type=raw,value=stable,enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
-          type=raw,value=stable-py${{ inputs.python-version }},enable=${{ inputs.is-prerelease == 'false' && inputs.set-latest == 'true' }}
+          type=pep440,pattern={{major}}.{{minor}}-py${{ inputs.python-version }},value=${{ steps.cleannautobotversion.outputs.clean-version }},match=v(\d.\d.\d),enable=${{ steps.prereleasecheck.outputs.is-prerelease == 'false' }}
+          type=pep440,pattern={{major}}.{{minor}},value=${{ steps.cleannautobotversion.outputs.clean-version }},match=v(\d.\d.\d),enable=${{ steps.prereleasecheck.outputs.is-prerelease == 'false' && inputs.python-version == inputs.default-python-version }}
+          type=raw,value=latest,enable=${{ steps.prereleasecheck.outputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
+          type=raw,value=latest-py${{ inputs.python-version }},enable=${{ steps.prereleasecheck.outputs.is-prerelease == 'false' && inputs.set-latest == 'true' }}
+          type=raw,value=stable,enable=${{ steps.prereleasecheck.outputs.is-prerelease == 'false' && inputs.set-latest == 'true' && inputs.python-version == inputs.default-python-version }}
+          type=raw,value=stable-py${{ inputs.python-version }},enable=${{ steps.prereleasecheck.outputs.is-prerelease == 'false' && inputs.set-latest == 'true' }}
         labels: |
           org.opencontainers.image.title=Nautobot
 
