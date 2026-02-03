@@ -22,7 +22,7 @@ jobs:
       packages: "write"
     env:
       BUILD_PUSH_CONTAINER_ACTION_DEFAULT_PYTHON_VERSION: "3.13"
-      BUILD_PUSH_CONTAINER_ACTION_SET_LATEST: "true" # this will be ignored for pre-releases
+      BUILD_PUSH_CONTAINER_ACTION_SET_LATEST: "true" # Change this to false for LTM, Pre-release versions force this to false.
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
